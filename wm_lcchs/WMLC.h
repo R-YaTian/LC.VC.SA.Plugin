@@ -8,6 +8,5 @@ class WMLC
 public:
 	static bool CheckResourceFile(HMODULE hPlugin);
 	static bool CheckGameVersion();
-
 	static void PatchGame();
 };
