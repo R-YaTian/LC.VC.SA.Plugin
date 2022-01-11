@@ -6,6 +6,9 @@
 #include "rwFunc.h"
 #include "CSprite2d.h"
 
+#include <Shlwapi.h>
+#pragma comment(lib, "Shlwapi.lib")
+
 #define GAME_ID_GTAVC_1_0 0x74FF5064
 #define GAME_ID_GTAVC_1_1 0x00408DC0
 #define GAME_ID_GTAVC_STEAM 0x00004824
@@ -51,7 +54,7 @@ injector::auto_pointer WMVC::SelectAddress(unsigned int addr10, unsigned int add
     }
 }
 
-void WMVC::MakeResourcePath(HMODULE hPlugin)
+bool WMVC::MakeResourcePath(HMODULE hPlugin)
 {
     char pluginPath[260];
 
@@ -63,6 +66,14 @@ void WMVC::MakeResourcePath(HMODULE hPlugin)
     std::strcpy(std::strrchr(CFont::fontPath, '.'), "\\wm_vcchs.txd");
     std::strcpy(std::strrchr(CFont::textPath, '.'), "\\wm_vcchs.gxt");
     std::strcpy(std::strrchr(CCharTable::datPath, '.'), "\\wm_vcchs.dat");
+
+    if (!PathFileExistsA(CFont::fontPath) || !PathFileExistsA(CFont::textPath) || !PathFileExistsA(CCharTable::datPath))
+    {
+        MessageBoxW(nullptr, L"找不到资源文件，请确认是否带上了wm_vcchs文件夹！", WMVERSIONWSTRING, MB_ICONWARNING);
+        return false;
+    }
+
+    return true;
 }
 
 __declspec(naked) void hook_load_gxt_mission()
