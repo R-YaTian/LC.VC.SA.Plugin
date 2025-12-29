@@ -1,12 +1,12 @@
-#pragma once
+﻿#pragma once
 
 class CTxdStore
 {
 public:
 	static int AddTxdSlot(const char *name);
-	static void LoadTxd(int slot, const char *filename);
+	static bool LoadTxd(int slot, const char *filename);
 	static void AddRef(int slot);
-	static void PushCurrentTxd();
+	static int PushCurrentTxd();
 	static void PopCurrentTxd();
 	static void SetCurrentTxd(int slot);
 	static int FindTxdSlot(const char *name);

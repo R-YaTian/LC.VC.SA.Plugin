@@ -23,15 +23,23 @@ bool WMLC::CheckResourceFile(HMODULE hPlugin)
 	GetModuleFileNameA(hPlugin, pluginPath, MAX_PATH);
 	std::strcpy(CFont::texturePath, pluginPath);
 	std::strcpy(CFont::textPath, pluginPath);
+	std::strcpy(CCharTable::datPath, pluginPath);
+
 	std::strcpy(std::strrchr(CFont::texturePath, '.'), "\\wm_lcchs.txd");
 	std::strcpy(std::strrchr(CFont::textPath, '.'), "\\wm_lcchs.gxt");
-
-	if (!PathFileExistsA(CFont::texturePath) || !PathFileExistsA(CFont::textPath))
+	std::strcpy(std::strrchr(CCharTable::datPath, '.'), "\\wm_lcchs.dat");
+#ifndef OUT_DAT_FILE
+	if (!PathFileExistsA(CFont::texturePath) || !PathFileExistsA(CFont::textPath) /* || !PathFileExistsA(CCharTable::datPath)*/)
+#else
+	if (!PathFileExistsA(CFont::texturePath) || !PathFileExistsA(CFont::textPath)  || !PathFileExistsA(CCharTable::datPath))
+#endif
+	
 	{
 		MessageBoxW(nullptr, L"找不到资源文件，请确认是否带上了wm_lcchs文件夹！", WMVERSIONWSTRING, MB_ICONWARNING);
 		return false;
 	}
 
+	
 	return true;
 }
 
@@ -39,13 +47,20 @@ bool WMLC::CheckGameVersion()
 {
 	auto &veref = injector::address_manager::singleton();
 
-	if (veref.IsIII() && (veref.GetMinorVersion() != 1))
+	if (veref.IsIII() && (veref.GetMinorVersion() <= 1))
 	{
 		PatchGame();
+#ifndef OUT_DAT_FILE
+		CCharTable::InitTable();
+#else
+		CCharTable::ReadTable();
+#endif // ! OUT_DAT_FILE
+
+		
 	}
 	else
 	{
-		MessageBoxW(nullptr, L"你正在使用的游戏版本不被支持！请确保你的游戏主程序为以下之一：\n1.0：2383872字节\nSteam：2801664字节", WMVERSIONWSTRING, MB_ICONWARNING);
+		MessageBoxW(nullptr, L"你正在使用的游戏版本不被支持！请确保你的游戏主程序为以下之一：\n1.1或 1.0：2383872字节\nSteam：2801664字节", WMVERSIONWSTRING, MB_ICONWARNING);
 		return false;
 	}
 
@@ -106,45 +121,45 @@ unsigned __int16 *ContinousTokensFix(unsigned __int16 *arg_text, unsigned __int1
 
 	return arg_text;
 }
-
+unsigned int lc11_offset = 0x2c0;
 void WMLC::PatchGame()
 {
-	unsigned __int8 *FET_LAN_Entry = addr_sel::lc::select_address<unsigned __int8>({0x6157AC, 0x0, 0x621F64});
+	unsigned __int8 *FET_LAN_Entry = addr_sel::lc::select_address<unsigned __int8>({0x6157AC, 0x614F6C, 0x621F64});
 	std::memcpy(FET_LAN_Entry, FET_LAN_Entry + 0x14, 0x14);
 	std::memcpy(FET_LAN_Entry + 0x14, FET_LAN_Entry + 0x28, 0x14);
 	std::memset(FET_LAN_Entry + 0x28, 0, 0x14);
 
-	injector::WriteMemory<unsigned __int32>(addr_sel::lc::select_address({0x5082CF, 0x0, 0x50833F}), 255, true);
-	injector::WriteMemory<unsigned __int8>(addr_sel::lc::select_address({0x5082D4, 0x0, 0x508344}), 0, true);
-	injector::WriteMemory<unsigned __int32>(addr_sel::lc::select_address({0x5082D6, 0x0, 0x508346}), 0, true);
-	injector::WriteMemory<unsigned __int8>(addr_sel::lc::select_address({0x5082DB, 0x0, 0x50834B}), 0, true);
+	injector::WriteMemory<unsigned __int32>(addr_sel::lc::select_address({0x5082CF, 0x5083AF, 0x50833F}), 255, true);
+	injector::WriteMemory<unsigned __int8>(addr_sel::lc::select_address({0x5082D4, 0x5083B4 , 0x508344}), 0, true);
+	injector::WriteMemory<unsigned __int32>(addr_sel::lc::select_address({0x5082D6, 0x5083B6, 0x508346}), 0, true);
+	injector::WriteMemory<unsigned __int8>(addr_sel::lc::select_address({0x5082DB, 0x5083BB, 0x50834B}), 0, true);
 
-	injector::WriteMemory<__int16>(addr_sel::lc::select_address({0x52B73A, 0x0, 0x52B90A}), 5, true);
+	injector::WriteMemory<__int16>(addr_sel::lc::select_address({0x52B73A, 0x52B97A, 0x52B90A}), 5, true);
 
-	injector::MakeCALL(addr_sel::lc::select_address({0x52C42F, 0x0, 0x52C5FF}), LoadCHSGXT);
+	injector::MakeCALL(addr_sel::lc::select_address({0x52C42F, 0x52C66F, 0x52C5FF}), LoadCHSGXT);
 
-	injector::MakeCALL(addr_sel::lc::select_address({0x500B87, 0x0, 0x500BF7}), CFont::LoadCHSTexture);
-	injector::MakeCALL(addr_sel::lc::select_address({0x500BCA, 0x0, 0x500C3A}), CFont::UnloadCHSTexture);
+	injector::MakeCALL(addr_sel::lc::select_address({0x500B87, 0x500C67, 0x500BF7}), CFont::LoadCHSTexture);
+	injector::MakeCALL(addr_sel::lc::select_address({0x500BCA, 0x500CAA, 0x500C3A}), CFont::UnloadCHSTexture);
 
-	injector::MakeJMP(addr_sel::lc::select_address({0x5018A0, 0x0, 0x501910}), CFont::GetStringWidth);
-	injector::MakeJMP(addr_sel::lc::select_address({0x501260, 0x0, 0x5012D0}), CFont::GetNumberLines);
-	injector::MakeJMP(addr_sel::lc::select_address({0x5013B0, 0x0, 0x501420}), CFont::GetTextRect);
-	injector::MakeJMP(addr_sel::lc::select_address({0x501960, 0x0, 0x5019D0}), CFont::GetNextSpace);
-	injector::MakeJMP(addr_sel::lc::select_address({0x501840, 0x0, 0x5018B0}), CFont::GetCharacterSize);
+	injector::MakeJMP(addr_sel::lc::select_address({0x5018A0, 0x501980, 0x501910}), CFont::GetStringWidth);
+	injector::MakeJMP(addr_sel::lc::select_address({0x501260, 0x501340, 0x5012D0}), CFont::GetNumberLines);
+	injector::MakeJMP(addr_sel::lc::select_address({0x5013B0, 0x501490, 0x501420}), CFont::GetTextRect);
+	injector::MakeJMP(addr_sel::lc::select_address({0x501960, 0x501A40, 0x5019D0}), CFont::GetNextSpace);
+	injector::MakeJMP(addr_sel::lc::select_address({0x501840, 0x501920, 0x5018B0}), CFont::GetCharacterSize);
 
-	injector::MakeCALL(addr_sel::lc::select_address({0x50179F, 0x0, 0x50180F}), CFont::PrintCharDispatcher);
+	injector::MakeCALL(addr_sel::lc::select_address({0x50179F, 0x50187F, 0x50180F}), CFont::PrintCharDispatcher);
 
-	jmpBack1.retAddr1 = addr_sel::lc::select_address({0x50117C, 0x0, 0x5011EC});
-	jmpBack1.retAddr2 = addr_sel::lc::select_address({0x501167, 0x0, 0x5011D7});
-	jmpBack1.retAddr3 = addr_sel::lc::select_address({0x50123B, 0x0, 0x5012AB});
-	injector::MakeJMP(addr_sel::lc::select_address({0x50115F, 0x0, 0x5011CF}), PrintStringFix);
+	jmpBack1.retAddr1 = addr_sel::lc::select_address({0x50117C, 0x50125C, 0x5011EC});
+	jmpBack1.retAddr2 = addr_sel::lc::select_address({0x501167, 0x501247, 0x5011D7});
+	jmpBack1.retAddr3 = addr_sel::lc::select_address({0x50123B, 0x50131B, 0x5012AB});
+	injector::MakeJMP(addr_sel::lc::select_address({0x50115F, 0x50123F, 0x5011CF}), PrintStringFix);
 
-	injector::MakeCALL(addr_sel::lc::select_address({0x501751, 0x0, 0x5017C1}), ContinousTokensFix);
+	injector::MakeCALL(addr_sel::lc::select_address({0x501751, 0x501831, 0x5017C1}), ContinousTokensFix);
 
-	injector::MakeNOP(addr_sel::lc::select_address({0x58F4EB, 0x0, 0x58F6CB}), 6);
-	injector::MakeNOP(addr_sel::lc::select_address({0x58F4F3, 0x0, 0x58F6D3}), 1);
-	injector::MakeNOP(addr_sel::lc::select_address({0x58F50D, 0x0, 0x58F6ED}), 1);
-	injector::MakeNOP(addr_sel::lc::select_address({0x58F528, 0x0, 0x58F708}), 1);
-	injector::MakeNOP(addr_sel::lc::select_address({0x58F52D, 0x0, 0x58F70D}), 6);
-	injector::MakeNOP(addr_sel::lc::select_address({0x58F55D, 0x0, 0x58F73D}), 6);
+	injector::MakeNOP(addr_sel::lc::select_address({0x58F4EB, 0x58F7DB, 0x58F6CB}), 6);
+	injector::MakeNOP(addr_sel::lc::select_address({0x58F4F3, 0x58F7E3, 0x58F6D3}), 1);
+	injector::MakeNOP(addr_sel::lc::select_address({0x58F50D, 0x58F7FD, 0x58F6ED}), 1);
+	injector::MakeNOP(addr_sel::lc::select_address({0x58F528, 0x58F818, 0x58F708}), 1);
+	injector::MakeNOP(addr_sel::lc::select_address({0x58F52D, 0x58F81D, 0x58F70D}), 6);
+	injector::MakeNOP(addr_sel::lc::select_address({0x58F55D, 0x58F84D, 0x58F73D}), 6);
 }

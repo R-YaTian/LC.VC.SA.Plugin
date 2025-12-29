@@ -18,7 +18,7 @@ void CFont::LoadCHSTexture()
 {
 	CTxdStore::PopCurrentTxd();
 	int slot = CTxdStore::AddTxdSlot("wm_lcchs");
-	CTxdStore::LoadTxd(slot, texturePath);
+	bool isok = CTxdStore::LoadTxd(slot, texturePath);
 	CTxdStore::AddRef(slot);
 	CTxdStore::PushCurrentTxd();
 	CTxdStore::SetCurrentTxd(slot);
@@ -315,10 +315,10 @@ unsigned __int16 *CFont::ParseToken(unsigned __int16 *arg_text, unsigned __int16
 
 CFont::CFont()
 {
-    Size = addr_sel::lc::select_address<CFontSizes>({ 0x5FD120, 0x0, 0x609F00 });
-    Details = addr_sel::lc::select_address<CFontDetails>({ 0x8F317C, 0x0, 0x903370 });
-    fpPrintChar = addr_sel::lc::select_address({ 0x500C30, 0x0, 0x500CA0 });
-    fpParseToken = addr_sel::lc::select_address({ 0x5019A0, 0x0, 0x501A10 });
+    Size = addr_sel::lc::select_address<CFontSizes>({ 0x5FD120, 0x5FCF08, 0x609F00 });
+    Details = addr_sel::lc::select_address<CFontDetails>({ 0x8F317C, 0x8F3230, 0x903370 });
+    fpPrintChar = addr_sel::lc::select_address({ 0x500C30, 0x500D10, 0x500CA0 });
+    fpParseToken = addr_sel::lc::select_address({ 0x5019A0, 0x501A80, 0x501A10 });
 }
 
 static CFont instance;

@@ -22,7 +22,7 @@ public:
 	explicit CSprite2d(int);
 
 private:
-	RwTexture *m_pRwTexture;
+	RwTexture* m_pRwTexture = NULL;
 
 	static void *fpSetTexture;
 	static void *fpDelete;
