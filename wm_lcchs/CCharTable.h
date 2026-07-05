@@ -1,7 +1,5 @@
-﻿#pragma once
+#pragma once
 #include "CFont.h"
-
-#define OUT_DAT_FILE
 #pragma pack(push, 1)
 struct CharPos
 {
@@ -16,7 +14,6 @@ public:
 
 	static CharPos GetCharPos(unsigned __int16 chr);
 
-	static void InitTable();
 	static void ReadTable();
 	CCharTable();
 
