@@ -1,4 +1,4 @@
-﻿#include "WMLC.h"
+#include "WMLC.h"
 #include "CFont.h"
 #include "CTxdStore.h"
 #include "rwFunc.h"
@@ -28,14 +28,10 @@ bool WMLC::CheckResourceFile(HMODULE hPlugin)
 	std::strcpy(std::strrchr(CFont::texturePath, '.'), "\\wm_lcchs.txd");
 	std::strcpy(std::strrchr(CFont::textPath, '.'), "\\wm_lcchs.gxt");
 	std::strcpy(std::strrchr(CCharTable::datPath, '.'), "\\wm_lcchs.dat");
-#ifndef OUT_DAT_FILE
-	if (!PathFileExistsA(CFont::texturePath) || !PathFileExistsA(CFont::textPath) /* || !PathFileExistsA(CCharTable::datPath)*/)
-#else
-	if (!PathFileExistsA(CFont::texturePath) || !PathFileExistsA(CFont::textPath)  || !PathFileExistsA(CCharTable::datPath))
-#endif
+if (!PathFileExistsA(CFont::texturePath) || !PathFileExistsA(CFont::textPath)  || !PathFileExistsA(CCharTable::datPath))
 	
 	{
-		MessageBoxW(nullptr, L"找不到资源文件，请确认是否带上了wm_lcchs文件夹！", WMVERSIONWSTRING, MB_ICONWARNING);
+		MessageBoxW(nullptr, L"找不到资源文件，请确认wm_lcchs文件夹里面的文件是否有丢失！", WMVERSIONWSTRING, MB_ICONWARNING);
 		return false;
 	}
 
@@ -50,17 +46,13 @@ bool WMLC::CheckGameVersion()
 	if (veref.IsIII() && (veref.GetMinorVersion() <= 1))
 	{
 		PatchGame();
-#ifndef OUT_DAT_FILE
-		CCharTable::InitTable();
-#else
 		CCharTable::ReadTable();
-#endif // ! OUT_DAT_FILE
 
 		
 	}
 	else
 	{
-		MessageBoxW(nullptr, L"你正在使用的游戏版本不被支持！请确保你的游戏主程序为以下之一：\n1.1或 1.0：2383872字节\nSteam：2801664字节", WMVERSIONWSTRING, MB_ICONWARNING);
+		MessageBoxW(nullptr, L"你正在使用的游戏版本不被支持！请确保你的游戏主程序为以下之一：\n1.0：2383872字节\n 1.1：2379776字节\nSteam：2801664字节", WMVERSIONWSTRING, MB_ICONWARNING);
 		return false;
 	}
 

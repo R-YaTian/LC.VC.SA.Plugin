@@ -1,5 +1,6 @@
 #include "LCGXT.h"
 
+#include <array>
 #include <iostream>
 #include <fstream>
 #include <regex>
@@ -9,6 +10,22 @@
 
 #include <cstdio>
 #include <cstring>
+#include "../deps/utf8cpp/utf8.h"
+
+struct CharPos
+{
+	uint8_t rowIndex;
+	uint8_t columnIndex;
+};
+
+wchar_t MostUsedCharacters[] = L"";
+
+static std::array<CharPos, 0x10000> sTable;
+
+LCGXT::LCGXT()
+{
+    m_WideCharCollection.insert(std::begin(MostUsedCharacters), std::end(MostUsedCharacters) - 1);
+}
 
 bool LCGXT::LoadText(const char *path)
 {
@@ -22,7 +39,6 @@ bool LCGXT::LoadText(const char *path)
 	std::smatch matchResult;
 
 	m_GxtData.clear();
-	m_WideCharCollection.clear();
 
 	inputFile.open(path);
 
@@ -123,29 +139,31 @@ size_t LCGXT::GetDataBlockSize()
 
 void LCGXT::GenerateWMHHZStuff()
 {
-	FILE *charactersSet;
-	std::ofstream convCode;
+	FILE *characters;
+	FILE *table;
 
-	int row = 0;
-	int column = 0;
+	uint8_t row = 0;
+	uint8_t column = 0;
 
-	convCode.open("TABLE.txt", std::ios::trunc);
+	sTable.fill({ 63, 63 });
 
-	charactersSet = fopen("CHARACTERS.txt", "wb");
+	characters = std::fopen("CHARACTERS.txt", "wb");
+	table = std::fopen("wm_lcchs.dat", "wb");
 
-	if (!convCode.is_open() || charactersSet == nullptr)
+	if (table == nullptr || characters == nullptr)
 	{
 		std::cout << "Failed to create output file." << std::endl;
 		return;
 	}
 
-	fwrite("\xFF\xFE", 2, 1, charactersSet);
+	std::fwrite("\xFF\xFE", 2, 1, characters);
 
-	for (auto chr : this->m_WideCharCollection)
+	for (uint16_t chr : this->m_WideCharCollection)
 	{
-		convCode << std::hex << "m_Table[0x" << chr << std::dec << "] = {" << row << ',' << column << "};" << '\n';
+		std::fwrite(&chr, 2, 1, characters);
 
-		fwrite(&chr, 2, 1, charactersSet);
+		sTable[chr].rowIndex = row;
+		sTable[chr].columnIndex = column;
 
 		if (column < 63)
 		{
@@ -154,20 +172,39 @@ void LCGXT::GenerateWMHHZStuff()
 		else
 		{
 			row += 1;
-			fwrite(L"\n", 2, 1, charactersSet);
+
+			std::fwrite(L"\n", 2, 1, characters);
+
 			column = 0;
 		}
 	}
 
-	fclose(charactersSet);
+	std::fwrite(&sTable.front(), 2, 0x10000, table);
+
+	std::fclose(characters);
+	std::fclose(table);
 }
 
 void LCGXT::UTF8ToUTF16(const std::string &str, std::vector<uint16_t> &result)
 {
-	std::wstring_convert<std::codecvt_utf8<wchar_t> > converter;
+    result.clear();
+    utf8::utf8to16(str.begin(), str.end(), std::back_inserter(result));
+    result.push_back(0);
+}
 
-	std::wstring wstr = converter.from_bytes(str);
-	result.resize(wstr.length() + 1);
-	std::copy(wstr.begin(), wstr.end(), result.begin());
-	result.push_back(0);
+void LCGXT::skip_utf8_signature(std::ifstream &stream)
+{
+	char header[3];
+
+	stream.seekg(0);
+
+	if (stream.get(header[0]) && stream.get(header[1]) && stream.get(header[2]))
+	{
+		if (header[0] == '\xEF' && header[1] == '\xBB' && header[2] == '\xBF')
+		{
+			return;
+		}
+	}
+
+	stream.seekg(0);
 }
