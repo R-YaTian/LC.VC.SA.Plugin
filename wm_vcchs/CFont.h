@@ -121,6 +121,10 @@ public:
     static float __cdecl GetStringWidth(CharType *arg_text, bool arg_getall);
     static CharType *GetNextSpace(CharType *arg_text);
 
+    // 判断当前「左对齐」文本的换行边界是否已落在绘制起点之前（或与之重合）。
+    // 这类配置来自 VC 脚本文字的默认值，详见 CFont.cpp 中的实现说明。
+    static bool IsWrapDisabled(float arg_x);
+
     static short __cdecl GetNumberLines(float arg_x, float arg_y, CharType *arg_text);
     static void GetTextRect(CRect *result, float arg_x, float arg_y, CharType *arg_text);
 

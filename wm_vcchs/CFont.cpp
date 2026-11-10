@@ -191,12 +191,24 @@ CharType *CFont::GetNextSpace(CharType *arg_text)
     return temp;
 }
 
+bool CFont::IsWrapDisabled(float arg_x)
+{
+    // 居中 / 右对齐时 xBound 从 0 开始累计，换行边界与绘制起点无关，不能按 arg_x 判断。
+    if (Details->Centre || Details->RightJustify)
+    {
+        return false;
+    }
+
+    return arg_x >= Details->WrapX;
+}
+
 short CFont::GetNumberLines(float arg_x, float arg_y, CharType *arg_text)
 {
     short result = 0;
     float xBound;
     float yBound = arg_y;
     float strWidth, widthLimit;
+    const bool bNoWrap = IsWrapDisabled(arg_x);
 
     if (Details->Centre || Details->RightJustify)
     {
@@ -220,7 +232,7 @@ short CFont::GetNumberLines(float arg_x, float arg_y, CharType *arg_text)
             widthLimit = Details->WrapX;
         }
 
-        if ((xBound + strWidth) <= widthLimit)
+        if (bNoWrap || (xBound + strWidth) <= widthLimit)
         {
             xBound += strWidth;
             arg_text = GetNextSpace(arg_text);
@@ -229,6 +241,12 @@ short CFont::GetNumberLines(float arg_x, float arg_y, CharType *arg_text)
             {
                 xBound += GetCharacterSizeNormal(' ');
                 ++arg_text;
+
+                // 文本以空格结尾时也要计入这一行
+                if (*arg_text == 0)
+                {
+                    ++result;
+                }
             }
             else if (*arg_text == 0)
             {
@@ -248,6 +266,14 @@ short CFont::GetNumberLines(float arg_x, float arg_y, CharType *arg_text)
 
             ++result;
             yBound += Details->Scale.y * 18.0f;
+
+            // 插件早期版本漏了这一步，开启文本背景时 GetTextRect -> GetNumberLines
+            arg_text = GetNextSpace(arg_text);
+
+            if (*arg_text == ' ')
+            {
+                ++arg_text;
+            }
         }
     }
 
@@ -278,7 +304,17 @@ void CFont::GetTextRect(CRect *result, float arg_x, float arg_y, CharType *arg_t
     else
     {
         result->x1 = arg_x - 4.0f;
-        result->x2 = Details->WrapX;
+
+        // 这里改用文本实际宽度。
+        if (IsWrapDisabled(arg_x))
+        {
+            result->x2 = arg_x + GetStringWidth(arg_text, true) + 4.0f;
+        }
+        else
+        {
+            result->x2 = Details->WrapX;
+        }
+
         result->y1 = arg_y;
         result->y2 = (18.0f * Details->Scale.y) * numLines + arg_y + 4.0f;
     }
@@ -299,6 +335,7 @@ void CFont::PrintString(float arg_x, float arg_y, CharType *arg_text)
     CharType *strHead = arg_text;
 
     bool emptyLine = true;
+    const bool bNoWrap = IsWrapDisabled(arg_x);
 
     short numSpaces = 0;
 
@@ -310,6 +347,17 @@ void CFont::PrintString(float arg_x, float arg_y, CharType *arg_text)
     }
 
     ++Details->TextCount;
+
+    // 去掉尾部空格：原逻辑在最后一个空格处会执行 *ptext = 0 后直接退出循环，
+    CharType *tail = arg_text;
+    while (*tail != 0)
+    {
+        ++tail;
+    }
+    while (tail > arg_text && *(tail - 1) == ' ')
+    {
+        *--tail = 0;
+    }
 
     if (Details->Background)
     {
@@ -343,7 +391,8 @@ void CFont::PrintString(float arg_x, float arg_y, CharType *arg_text)
             widthLimit = Details->WrapX;
         }
 
-        if (((xBound + strWidth) <= widthLimit) || emptyLine)
+        // 换行边界在起点左侧时不换行，否则中文会被逐字拆成一行一个（竖排）。
+        if (bNoWrap || ((xBound + strWidth) <= widthLimit) || emptyLine)
         {
             ptext = GetNextSpace(ptext);
             xBound += strWidth;
